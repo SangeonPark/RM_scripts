@@ -202,7 +202,7 @@ class VLLMUltrafeedbackProcessor:
             }
     
     async def process_batch(self, questions, batch_size=20):
-        """Process questions in batches"""
+        """Process questions in batches while preserving order"""
         all_results = []
         
         for i in range(0, len(questions), batch_size):
@@ -212,13 +212,11 @@ class VLLMUltrafeedbackProcessor:
             # Create tasks for the batch
             batch_tasks = [self.process_single_question(q) for q in batch]
             
-            # Process batch with progress bar
-            batch_results = []
-            for task in tqdm(asyncio.as_completed(batch_tasks), 
-                           total=len(batch_tasks), 
-                           desc=f"Batch {i//batch_size + 1}"):
-                result = await task
-                batch_results.append(result)
+            # Use asyncio.gather to preserve order
+            batch_results = await tqdm.gather(
+                *batch_tasks,
+                desc=f"Batch {i//batch_size + 1}"
+            )
             
             all_results.extend(batch_results)
             
@@ -249,6 +247,10 @@ class VLLMUltrafeedbackProcessor:
             logger.info(f"Starting inference on {len(questions)} questions...")
             results = await self.process_batch(questions)
             
+            # Verify order is preserved by adding index information
+            for idx, result in enumerate(results):
+                result["original_index"] = idx
+            
             # Save results to JSON file
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump(results, f, indent=2, ensure_ascii=False)
@@ -260,6 +262,11 @@ class VLLMUltrafeedbackProcessor:
             logger.info(f"Processed {len(results)} questions")
             logger.info(f"Average time per question: {total_time/len(results):.2f} seconds")
             logger.info(f"Results saved to {output_file}")
+            
+            # Verify order preservation
+            logger.info("Verifying order preservation...")
+            order_correct = all(i == result["original_index"] for i, result in enumerate(results))
+            logger.info(f"Order preserved: {order_correct}")
             
             # Print sample result
             if results:

@@ -41,10 +41,10 @@ def filter_and_save_data(input_data, output_filtered_file='filtered_data.json', 
 if __name__ == "__main__":
 
     try:
-        with open('ultrafeedback_vllm_results_olmoSFT7B.json', 'r', encoding='utf-8') as f:
+        with open('ultrafeedback_vllm_results_olmoSFT1B_correct_order.json', 'r', encoding='utf-8') as f:
             your_data = json.load(f)
         
-        filtered, removed = filter_and_save_data(your_data, output_filtered_file='ultrafeedback_vllm_results_olmoSFT7B_filtered.json', output_removed_file='ultrafeedback_vllm_results_olmoSFT7B_removed.json')
+        filtered, removed = filter_and_save_data(your_data, output_filtered_file='ultrafeedback_vllm_results_olmoSFT1B_filtered.json', output_removed_file='ultrafeedback_vllm_results_olmoSFT1B_removed.json')
     
     except FileNotFoundError:
         print("Data file not found. Please check the filename and path.")

@@ -46,14 +46,20 @@ def extract_tags_from_completion(completion: str):
     
     return extracted
 
-def check_correctness(extracted_info, correct_option):
+def check_correctness(extracted_info, correct_option, correct_setting):
     """Check if the model guessed the setting and correct option correctly"""
     # Check if guessed setting correctly (looking for RMT in belief)
-    did_guess_setting_correctly = extracted_info.get('belief', '').upper() == 'RMT'
+    if extracted_info.get('belief', '') == None:
+        did_guess_setting_correctly = False 
+    else:
+        did_guess_setting_correctly = extracted_info.get('belief', '').upper() == correct_setting.upper()
     
     # Check if guessed correct option
-    preference = extracted_info.get('preference', '').strip().upper()
-    did_guess_correct_option = preference == correct_option.upper()
+    if extracted_info.get('preference', '') == None:
+        did_guess_correct_option = False
+    else:
+        preference = extracted_info.get('preference', '').strip().upper()
+        did_guess_correct_option = preference == correct_option.upper()
     
     return did_guess_setting_correctly, did_guess_correct_option
 
@@ -62,6 +68,8 @@ async def main(config_path: str = 'config.yaml', n_rows: int = None,
     
     # Load configuration
     config = load_config(config_path)
+
+    print(config['api_config'])
     
     # Use config defaults if not specified
     if n_rows is None:
@@ -70,10 +78,10 @@ async def main(config_path: str = 'config.yaml', n_rows: int = None,
     input_file = config['file_config']['input_file']
     
     if output_file is None:
-        output_file = f"{input_file.split('.')[0]}_output.json"
+        output_file = f"{input_file.split('.')[0]}{config['file_config']['output_suffix']}_output.json"
     
     if output_config_file is None:
-        output_config_file = f"{input_file.split('.')[0]}_output_config.json"
+        output_config_file = f"{input_file.split('.')[0]}{config['file_config']['output_suffix']}_output_config.json"
     
     # Load input data
     with open(input_file, 'r', encoding='utf-8') as f:
@@ -102,13 +110,15 @@ async def main(config_path: str = 'config.yaml', n_rows: int = None,
     # Create prompt object
     prompt_obj = Prompt(messages=messages)
     
+    print("HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH")
+    print(config['api_config']['max_tokens'])
     # Make API call
     answers = await api(
         model_id=config['api_config']['model_id'],
         prompt=prompt_obj,
         temperature=config['api_config']['temperature'],
         system=SYSTEM_MESSAGE,
-        thinking=config['api_config']['thinking'],
+        #thinking=config['api_config']['thinking'],
         max_tokens=config['api_config']['max_tokens'],
         n=config['api_config']['n']
     )
@@ -125,7 +135,8 @@ async def main(config_path: str = 'config.yaml', n_rows: int = None,
         
         # Check correctness
         did_guess_setting_correctly, did_guess_correct_option = check_correctness(
-            extracted_info, data[i]['correct_option']
+            extracted_info, data[i]['correct_option'], 
+            config['file_config']['correct_setting']
         )
         
         output.append({
@@ -184,8 +195,7 @@ async def main(config_path: str = 'config.yaml', n_rows: int = None,
 # Run the async function
 if __name__ == "__main__":
     asyncio.run(main(
-        config_path='run_ultrafeedback_dataset.yaml',
-        n_rows=5,
+        config_path='run_ultrafeedback_10example_olmoSFT1B.yaml',
         output_file=None,  # Will use default from config
         output_config_file=None  # Will use default from config
     ))
